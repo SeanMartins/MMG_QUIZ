@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+client/dist/
+
+# Runtime data (SQLite database)
+server/data/*.db
+server/data/*.db-journal
+server/data/*.db-wal
+server/data/*.db-shm
+
+# User-uploaded content (music, backgrounds, logos)
+server/uploads/music/*
+server/uploads/backgrounds/*
+server/uploads/logos/*
+!server/uploads/music/.gitkeep
+!server/uploads/backgrounds/.gitkeep
+!server/uploads/logos/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.local
