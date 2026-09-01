@@ -22,6 +22,6 @@ export function optionFontSize(text = '') {
 }
 
 // Long answers read better stacked in one column than squeezed into a 2x2 grid.
-export function useSingleColumnOptions(options = []) {
+export function isLongOptionSet(options = []) {
   return options.some((o) => (o || '').length > 70);
 }

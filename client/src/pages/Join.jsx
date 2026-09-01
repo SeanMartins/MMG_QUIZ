@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { PartyPopper, AlertTriangle } from 'lucide-react';
 import { socket } from '../socket.js';
 
 export default function Join() {
@@ -42,13 +43,27 @@ export default function Join() {
       }}
     >
       <form onSubmit={submit} className="card" style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '0.3rem' }}>🎉 Unisciti al Quiz</h1>
+        <h1 style={{ fontSize: '2rem', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+          <PartyPopper size={28} aria-hidden /> Unisciti al Quiz
+        </h1>
         <p style={{ color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
           Inserisci il codice partita e scegli il nome della tua squadra
         </p>
 
         {error && (
-          <div style={{ color: '#ff4d4d', marginBottom: '1rem', fontWeight: 600 }}>⚠️ {error}</div>
+          <div
+            style={{
+              color: '#ff4d4d',
+              marginBottom: '1rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+            }}
+          >
+            <AlertTriangle size={16} /> {error}
+          </div>
         )}
 
         <input

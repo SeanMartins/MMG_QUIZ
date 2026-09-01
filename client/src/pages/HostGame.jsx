@@ -1,13 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import {
+  AlertTriangle,
+  Drum,
+  CheckCircle2,
+  XCircle,
+  Hourglass,
+  Trophy,
+  BarChart3,
+  FileSpreadsheet,
+  FileText,
+  Play,
+  Check,
+  MoreHorizontal,
+  Triangle,
+  Diamond,
+  Circle,
+  Square,
+} from 'lucide-react';
 import { socket } from '../socket.js';
 import { api } from '../api.js';
 import { applyBranding } from '../themes.js';
 import { playDrumRoll } from '../sound.js';
-import { questionFontSize, questionTextAlign, optionFontSize, useSingleColumnOptions } from '../textFit.js';
+import { questionFontSize, questionTextAlign, optionFontSize, isLongOptionSet } from '../textFit.js';
 
-const SHAPES = ['▲', '◆', '●', '■'];
+const SHAPES = [Triangle, Diamond, Circle, Square];
 
 export default function HostGame() {
   const { code } = useParams();
@@ -227,7 +245,11 @@ export default function HostGame() {
 
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
         {phase === 'connecting' && <p>Connessione...</p>}
-        {phase === 'error' && <div className="card">⚠️ {error}</div>}
+        {phase === 'error' && (
+          <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertTriangle size={18} /> {error}
+          </div>
+        )}
 
         {phase === 'lobby' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
@@ -267,7 +289,9 @@ export default function HostGame() {
 
         {phase === 'drumroll' && (
           <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '4rem', animation: 'drumroll-shake 0.15s infinite' }}>🥁</div>
+            <div style={{ display: 'flex', justifyContent: 'center', animation: 'drumroll-shake 0.15s infinite' }}>
+              <Drum size={64} />
+            </div>
             <h2 style={{ marginTop: '1rem' }}>E la risposta corretta è...</h2>
           </div>
         )}
@@ -300,29 +324,35 @@ export default function HostGame() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: useSingleColumnOptions(question.options) ? '1fr' : '1fr 1fr',
+                gridTemplateColumns: isLongOptionSet(question.options) ? '1fr' : '1fr 1fr',
                 gap: '1rem',
                 marginBottom: '1.5rem',
               }}
             >
-              {question.options.map((opt, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: `var(--answer-${i + 1})`,
-                    borderRadius: 12,
-                    padding: '1.2rem',
-                    fontSize: optionFontSize(opt),
-                    lineHeight: 1.35,
-                    fontWeight: 700,
-                    color: '#12081f',
-                    textAlign: opt.length > 60 ? 'left' : 'center',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {SHAPES[i]} {opt}
-                </div>
-              ))}
+              {question.options.map((opt, i) => {
+                const Shape = SHAPES[i];
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      background: `var(--answer-${i + 1})`,
+                      borderRadius: 12,
+                      padding: '1.2rem',
+                      fontSize: optionFontSize(opt),
+                      lineHeight: 1.35,
+                      fontWeight: 700,
+                      color: '#12081f',
+                      textAlign: opt.length > 60 ? 'left' : 'center',
+                      wordBreak: 'break-word',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                    }}
+                  >
+                    <Shape size={20} style={{ flexShrink: 0 }} /> {opt}
+                  </div>
+                );
+              })}
             </div>
 
             <div
@@ -341,7 +371,13 @@ export default function HostGame() {
                   marginBottom: '0.6rem',
                 }}
               >
-                {allAnswered ? '✅ Tutte le squadre hanno risposto!' : `Risposte ricevute: ${answeredTeamIds.length} / ${teams.length}`}
+                {allAnswered ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <CheckCircle2 size={22} /> Tutte le squadre hanno risposto!
+                  </span>
+                ) : (
+                  `Risposte ricevute: ${answeredTeamIds.length} / ${teams.length}`
+                )}
               </p>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {teams.map((t) => {
@@ -350,6 +386,9 @@ export default function HostGame() {
                     <span
                       key={t.id}
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
                         padding: '0.3rem 0.7rem',
                         borderRadius: 999,
                         fontSize: '0.85rem',
@@ -358,7 +397,7 @@ export default function HostGame() {
                         fontWeight: answered ? 700 : 400,
                       }}
                     >
-                      {answered ? '✓' : '…'} {t.name}
+                      {answered ? <Check size={13} /> : <MoreHorizontal size={13} />} {t.name}
                     </span>
                   );
                 })}
@@ -369,8 +408,23 @@ export default function HostGame() {
 
         {phase === 'reveal' && reveal && !showingLeaderboard && (
           <div style={{ width: '100%', maxWidth: 700, textAlign: 'center' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: optionFontSize(question?.options[reveal.correctIndex] || ''), lineHeight: 1.35 }}>
-              Risposta corretta: {SHAPES[reveal.correctIndex]} {question?.options[reveal.correctIndex]}
+            <h2
+              style={{
+                marginBottom: '1rem',
+                fontSize: optionFontSize(question?.options[reveal.correctIndex] || ''),
+                lineHeight: 1.35,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              Risposta corretta:
+              {(() => {
+                const Shape = SHAPES[reveal.correctIndex];
+                return <Shape size={20} />;
+              })()}
+              {question?.options[reveal.correctIndex]}
             </h2>
             <div className="card">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -379,8 +433,15 @@ export default function HostGame() {
                     .sort((a, b) => b.pointsAwarded - a.pointsAwarded)
                     .map((r) => (
                       <tr key={r.teamId} style={{ borderTop: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.5rem', textAlign: 'left' }}>
-                          {r.correct ? '✅' : r.answered ? '❌' : '⌛'} {r.teamName}
+                        <td style={{ padding: '0.5rem', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {r.correct ? (
+                            <CheckCircle2 size={16} color="#37ff8b" />
+                          ) : r.answered ? (
+                            <XCircle size={16} color="#ff4d6d" />
+                          ) : (
+                            <Hourglass size={16} color="var(--text-dim)" />
+                          )}
+                          {r.teamName}
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 700 }}>
                           +{r.pointsAwarded}
@@ -405,8 +466,16 @@ export default function HostGame() {
 
         {((showingLeaderboard && leaderboard) || (phase === 'ended' && leaderboard)) && (
           <div className="card" style={{ width: '100%', maxWidth: 600 }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>
-              {phase === 'ended' ? '🏆 Classifica finale' : '📊 Classifica'}
+            <h2 style={{ textAlign: 'center', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              {phase === 'ended' ? (
+                <>
+                  <Trophy size={22} /> Classifica finale
+                </>
+              ) : (
+                <>
+                  <BarChart3 size={22} /> Classifica
+                </>
+              )}
             </h2>
             <ol style={{ paddingLeft: '1.5rem' }}>
               {leaderboard.leaderboard.map((t, i) => (
@@ -418,11 +487,21 @@ export default function HostGame() {
 
             {phase === 'ended' && (
               <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center', marginTop: '1.5rem' }}>
-                <button className="btn btn-secondary" onClick={() => downloadExport('xlsx')} disabled={exporting}>
-                  📊 Esporta Excel
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => downloadExport('xlsx')}
+                  disabled={exporting}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <FileSpreadsheet size={16} /> Esporta Excel
                 </button>
-                <button className="btn btn-secondary" onClick={() => downloadExport('pdf')} disabled={exporting}>
-                  📄 Esporta PDF
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => downloadExport('pdf')}
+                  disabled={exporting}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <FileText size={16} /> Esporta PDF
                 </button>
               </div>
             )}
@@ -442,8 +521,13 @@ export default function HostGame() {
         }}
       >
         {phase === 'lobby' && (
-          <button className="btn" onClick={startGame} disabled={teams.length === 0}>
-            ▶ Avvia gioco {teams.length === 0 && '(serve almeno 1 squadra)'}
+          <button
+            className="btn"
+            onClick={startGame}
+            disabled={teams.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <Play size={16} /> Avvia gioco {teams.length === 0 && '(serve almeno 1 squadra)'}
           </button>
         )}
         {phase === 'session-intro' && (
@@ -455,9 +539,14 @@ export default function HostGame() {
           <button
             className="btn"
             onClick={revealAnswer}
-            style={allAnswered ? { background: 'var(--accent)', animation: 'pulse-glow 1s infinite' } : undefined}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              ...(allAnswered ? { background: 'var(--accent)', animation: 'pulse-glow 1s infinite' } : {}),
+            }}
           >
-            Rivela risposta {allAnswered && '✅'}
+            Rivela risposta {allAnswered && <CheckCircle2 size={16} />}
           </button>
         )}
         {phase === 'reveal' && (
@@ -476,8 +565,8 @@ export default function HostGame() {
               </button>
             )}
             {isLastQuestion && isLastSession && (
-              <button className="btn" onClick={endGame}>
-                Termina partita 🏆
+              <button className="btn" onClick={endGame} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Trophy size={16} /> Termina partita
               </button>
             )}
           </>
@@ -488,8 +577,8 @@ export default function HostGame() {
               {showingLeaderboard ? 'Nascondi classifica' : 'Mostra classifica'}
             </button>
             {isLastSession ? (
-              <button className="btn" onClick={endGame}>
-                Termina partita 🏆
+              <button className="btn" onClick={endGame} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Trophy size={16} /> Termina partita
               </button>
             ) : (
               <button className="btn" onClick={nextSession}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Target, AlertTriangle, Play, Plus } from 'lucide-react';
 import { api } from '../api.js';
 import { socket } from '../socket.js';
 import { THEMES, applyChrome } from '../themes.js';
@@ -67,7 +68,7 @@ export default function QuizList() {
         >
           <div>
             <h1 style={{ marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span aria-hidden>🎯</span> Quiz Live
+              <Target size={30} strokeWidth={2.2} color="var(--primary)" aria-hidden /> Quiz Live
             </h1>
             <div className="glow-line" style={{ width: 72, marginBottom: '0.8rem' }} />
             <p style={{ color: 'var(--text-dim)', maxWidth: 560 }}>
@@ -83,8 +84,11 @@ export default function QuizList() {
         </header>
 
         {error && (
-          <div className="card" style={{ borderColor: '#ff4d4d', marginBottom: '1.5rem', color: '#ffb4c0' }}>
-            ⚠️ {error}
+          <div
+            className="card"
+            style={{ borderColor: '#ff4d4d', marginBottom: '1.5rem', color: '#ffb4c0', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+          >
+            <AlertTriangle size={18} /> {error}
           </div>
         )}
 
@@ -99,8 +103,8 @@ export default function QuizList() {
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
           />
-          <button className="btn" type="submit">
-            + Crea quiz
+          <button className="btn" type="submit" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
+            <Plus size={18} /> Crea quiz
           </button>
         </form>
 
@@ -135,8 +139,13 @@ export default function QuizList() {
                   <button className="btn btn-outline" onClick={() => navigate(`/quiz/${q.id}`)}>
                     Modifica
                   </button>
-                  <button className="btn" onClick={() => launchGame(q.id)} disabled={launchingId === q.id}>
-                    {launchingId === q.id ? 'Avvio...' : '▶ Avvia partita'}
+                  <button
+                    className="btn"
+                    onClick={() => launchGame(q.id)}
+                    disabled={launchingId === q.id}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    {launchingId === q.id ? 'Avvio...' : (<><Play size={16} /> Avvia partita</>)}
                   </button>
                   <button className="btn btn-danger" onClick={() => removeQuiz(q.id)}>
                     Elimina

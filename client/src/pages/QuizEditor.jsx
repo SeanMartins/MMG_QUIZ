@@ -1,5 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Palette,
+  Layers,
+  Sparkles,
+  Image,
+  Tag,
+  Type,
+  Music,
+  X,
+  Trophy,
+  Timer,
+} from 'lucide-react';
 import { api } from '../api.js';
 import { THEMES, FONT_OPTIONS, applyChrome } from '../themes.js';
 import AnimatedBackground from '../components/AnimatedBackground.jsx';
@@ -26,7 +39,12 @@ export default function QuizEditor() {
   }, []);
   useEffect(load, [load]);
 
-  if (error) return <div style={{ padding: '2rem' }}>⚠️ {error}</div>;
+  if (error)
+    return (
+      <div style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <AlertTriangle size={18} /> {error}
+      </div>
+    );
   if (!quiz) return <div style={{ padding: '2rem' }}>Caricamento...</div>;
 
   async function saveTitle() {
@@ -66,7 +84,9 @@ export default function QuizEditor() {
       </div>
 
       <section className="card" style={{ marginBottom: '2rem' }}>
-        <h3 style={{ marginBottom: '1rem' }}>🎨 Grafica</h3>
+        <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Palette size={20} /> Grafica
+        </h3>
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
           {Object.entries(THEMES).map(([key, t]) => (
             <button
@@ -110,7 +130,9 @@ export default function QuizEditor() {
       <BrandingCard quiz={quiz} onChange={setQuiz} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h3>📚 Sessioni</h3>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Layers size={20} /> Sessioni
+        </h3>
         <button className="btn" onClick={addSession}>
           + Aggiungi sessione
         </button>
@@ -206,10 +228,14 @@ function BrandingCard({ quiz, onChange }) {
 
   return (
     <section className="card" style={{ marginBottom: '2rem' }}>
-      <h3 style={{ marginBottom: '1rem' }}>🎪 Personalizzazione evento</h3>
+      <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <Sparkles size={20} /> Personalizzazione evento
+      </h3>
 
       {brandingError && (
-        <div style={{ color: '#ff4d4d', marginBottom: '1rem' }}>⚠️ {brandingError}</div>
+        <div style={{ color: '#ff4d4d', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <AlertTriangle size={16} /> {brandingError}
+        </div>
       )}
 
       <label style={{ display: 'block', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
@@ -225,8 +251,8 @@ function BrandingCard({ quiz, onChange }) {
 
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
         <div>
-          <label style={{ display: 'block', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-            🖼 Sfondo personalizzato
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
+            <Image size={16} /> Sfondo personalizzato
           </label>
           {quiz.background_url ? (
             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
@@ -269,8 +295,8 @@ function BrandingCard({ quiz, onChange }) {
         </div>
 
         <div>
-          <label style={{ display: 'block', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-            🏷 Logo evento
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
+            <Tag size={16} /> Logo evento
           </label>
           {quiz.logo_url ? (
             <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
@@ -292,8 +318,8 @@ function BrandingCard({ quiz, onChange }) {
 
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
         <div>
-          <label style={{ display: 'block', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-            🎨 Colore testo (per contrasto su sfondi personalizzati)
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
+            <Palette size={16} /> Colore testo (per contrasto su sfondi personalizzati)
           </label>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
             <input
@@ -314,8 +340,8 @@ function BrandingCard({ quiz, onChange }) {
         </div>
 
         <div>
-          <label style={{ display: 'block', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
-            🔤 Font testo
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
+            <Type size={16} /> Font testo
           </label>
           <select value={quiz.font_family || ''} onChange={(e) => setFontFamily(e.target.value)}>
             {FONT_OPTIONS.map((f) => (
@@ -387,7 +413,9 @@ function SessionCard({ session, index, onChange }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.2rem' }}>
-        <label style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>🎵 Musica di sottofondo:</label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+          <Music size={16} /> Musica di sottofondo:
+        </label>
         <input type="file" accept="audio/*" onChange={onMusicChange} disabled={uploading} />
         {session.music_url && (
           <audio controls src={session.music_url} style={{ height: 32 }} />
@@ -470,8 +498,8 @@ function QuestionCard({ question, index, onChange }) {
           onBlur={() => save({})}
           placeholder="Testo della domanda (può essere lungo quanto serve, es. descrizione di un caso clinico)"
         />
-        <button className="btn btn-danger" onClick={removeQuestion}>
-          ✕
+        <button className="btn btn-danger" onClick={removeQuestion} style={{ display: 'flex', alignItems: 'center' }}>
+          <X size={16} />
         </button>
       </div>
 
@@ -502,7 +530,7 @@ function QuestionCard({ question, index, onChange }) {
 
       <div style={{ display: 'flex', gap: '1.5rem' }}>
         <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)' }}>
-          ⏱ Tempo (sec)
+          <Timer size={16} /> Tempo (sec)
           <input
             type="number"
             min={5}
@@ -514,7 +542,7 @@ function QuestionCard({ question, index, onChange }) {
           />
         </label>
         <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)' }}>
-          🏆 Punti max
+          <Trophy size={16} /> Punti max
           <input
             type="number"
             min={100}

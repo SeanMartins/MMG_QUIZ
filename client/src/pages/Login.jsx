@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Target, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../AuthContext.jsx';
 import { applyChrome } from '../themes.js';
 import AnimatedBackground from '../components/AnimatedBackground.jsx';
@@ -57,7 +58,9 @@ export default function Login() {
       >
         <form onSubmit={submit} className="card" style={{ width: '100%', maxWidth: 400 }}>
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-            <h1 style={{ marginBottom: '0.4rem' }}>🎯 Quiz Live</h1>
+            <h1 style={{ marginBottom: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              <Target size={26} strokeWidth={2.2} color="var(--primary)" aria-hidden /> Quiz Live
+            </h1>
             <div className="glow-line" style={{ width: 60, margin: '0 auto' }} />
           </div>
 
@@ -81,8 +84,19 @@ export default function Login() {
           </div>
 
           {error && (
-            <div style={{ color: '#ffb4c0', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>
-              ⚠️ {error}
+            <div
+              style={{
+                color: '#ffb4c0',
+                marginBottom: '1rem',
+                fontSize: '0.9rem',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+              }}
+            >
+              <AlertTriangle size={16} /> {error}
             </div>
           )}
 

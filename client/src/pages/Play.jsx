@@ -1,10 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Hand,
+  Hourglass,
+  PartyPopper,
+  XCircle,
+  Trophy,
+  BarChart3,
+  Triangle,
+  Diamond,
+  Circle,
+  Square,
+} from 'lucide-react';
 import { socket } from '../socket.js';
 import { applyBranding } from '../themes.js';
-import { questionFontSize, questionTextAlign, optionFontSize, useSingleColumnOptions } from '../textFit.js';
+import { questionFontSize, questionTextAlign, optionFontSize, isLongOptionSet } from '../textFit.js';
 
-const SHAPES = ['▲', '◆', '●', '■'];
+const SHAPES = [Triangle, Diamond, Circle, Square];
 
 export default function Play() {
   const { code } = useParams();
@@ -154,18 +168,26 @@ export default function Play() {
 
       {screen === 'connecting' && <p>Connessione in corso...</p>}
 
-      {screen === 'error' && <div className="card">⚠️ {error}</div>}
+      {screen === 'error' && (
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+          <AlertTriangle size={18} /> {error}
+        </div>
+      )}
 
       {screen === 'lobby' && (
         <div className="card" style={{ maxWidth: 420 }}>
-          <h2 style={{ marginBottom: '0.6rem' }}>✅ Sei dentro, {teamName}!</h2>
+          <h2 style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <CheckCircle2 size={24} /> Sei dentro, {teamName}!
+          </h2>
           <p style={{ color: 'var(--text-dim)' }}>In attesa che l'host avvii il quiz...</p>
         </div>
       )}
 
       {screen === 'waiting' && (
         <div className="card" style={{ maxWidth: 420 }}>
-          <h2>👋 Bentornato, {teamName}</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <Hand size={22} /> Bentornato, {teamName}
+          </h2>
           <p style={{ color: 'var(--text-dim)' }}>In attesa del prossimo evento...</p>
         </div>
       )}
@@ -206,30 +228,36 @@ export default function Play() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: useSingleColumnOptions(question.options) ? '1fr' : '1fr 1fr',
+              gridTemplateColumns: isLongOptionSet(question.options) ? '1fr' : '1fr 1fr',
               gap: '0.8rem',
             }}
           >
-            {question.options.map((opt, i) => (
-              <button
-                key={i}
-                onClick={() => answer(i)}
-                disabled={selected !== null}
-                className="btn"
-                style={{
-                  background: `var(--answer-${i + 1})`,
-                  minHeight: 90,
-                  fontSize: optionFontSize(opt),
-                  lineHeight: 1.3,
-                  textAlign: opt.length > 60 ? 'left' : 'center',
-                  opacity: selected !== null && selected !== i ? 0.4 : 1,
-                  border: selected === i ? '3px solid white' : 'none',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {SHAPES[i]} {opt}
-              </button>
-            ))}
+            {question.options.map((opt, i) => {
+              const Shape = SHAPES[i];
+              return (
+                <button
+                  key={i}
+                  onClick={() => answer(i)}
+                  disabled={selected !== null}
+                  className="btn"
+                  style={{
+                    background: `var(--answer-${i + 1})`,
+                    minHeight: 90,
+                    fontSize: optionFontSize(opt),
+                    lineHeight: 1.3,
+                    textAlign: opt.length > 60 ? 'left' : 'center',
+                    opacity: selected !== null && selected !== i ? 0.4 : 1,
+                    border: selected === i ? '3px solid white' : 'none',
+                    wordBreak: 'break-word',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <Shape size={18} style={{ flexShrink: 0 }} /> {opt}
+                </button>
+              );
+            })}
           </div>
           {answerError && <p style={{ color: '#ff4d4d', marginTop: '0.8rem' }}>{answerError}</p>}
         </div>
@@ -237,14 +265,26 @@ export default function Play() {
 
       {screen === 'answered' && (
         <div className="card" style={{ maxWidth: 420 }}>
-          <h2>{selected !== null ? '✅ Risposta inviata!' : '⌛ Tempo scaduto'}</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            {selected !== null ? (
+              <>
+                <CheckCircle2 size={22} /> Risposta inviata!
+              </>
+            ) : (
+              <>
+                <Hourglass size={22} /> Tempo scaduto
+              </>
+            )}
+          </h2>
           <p style={{ color: 'var(--text-dim)' }}>In attesa degli altri team...</p>
         </div>
       )}
 
       {screen === 'reveal' && myResult && (
         <div className="card" style={{ maxWidth: 420 }}>
-          <h1 style={{ fontSize: '2.4rem' }}>{myResult.correct ? '🎉' : myResult.answered ? '❌' : '⌛'}</h1>
+          <div style={{ display: 'flex', justifyContent: 'center', color: myResult.correct ? '#37ff8b' : myResult.answered ? '#ff4d6d' : 'var(--text-dim)' }}>
+            {myResult.correct ? <PartyPopper size={48} /> : myResult.answered ? <XCircle size={48} /> : <Hourglass size={48} />}
+          </div>
           <h2>{myResult.correct ? 'Corretto!' : myResult.answered ? 'Sbagliato' : 'Nessuna risposta'}</h2>
           <p style={{ fontSize: '1.4rem', color: 'var(--accent)', fontWeight: 700 }}>
             +{myResult.pointsAwarded} punti
@@ -255,8 +295,16 @@ export default function Play() {
 
       {(screen === 'leaderboard' || screen === 'ended') && leaderboard && (
         <div className="card" style={{ maxWidth: 420, width: '100%' }}>
-          <h2 style={{ marginBottom: '1rem' }}>
-            {screen === 'ended' ? '🏆 Classifica finale' : '📊 Classifica'}
+          <h2 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            {screen === 'ended' ? (
+              <>
+                <Trophy size={22} /> Classifica finale
+              </>
+            ) : (
+              <>
+                <BarChart3 size={22} /> Classifica
+              </>
+            )}
           </h2>
           {myBoardEntry && (
             <p style={{ color: 'var(--accent)', fontWeight: 700, marginBottom: '1rem' }}>
