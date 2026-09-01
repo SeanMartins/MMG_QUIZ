@@ -8,9 +8,16 @@ echo   QUIZ LIVE
 echo ================================================
 echo.
 
+rem Se e' presente una copia di Node.js inclusa nella cartella "tools",
+rem usa quella (nessuna installazione richiesta su questo PC). Altrimenti
+rem ripiega sul Node.js eventualmente gia' installato sul sistema.
+if exist "%~dp0tools\node-portable\node.exe" (
+    set "PATH=%~dp0tools\node-portable;%PATH%"
+)
+
 where node >nul 2>&1
 if errorlevel 1 (
-    echo [ERRORE] Node.js non risulta installato su questo PC.
+    echo [ERRORE] Node.js non risulta disponibile su questo PC.
     echo Scarica e installa la versione LTS da https://nodejs.org
     echo poi rilancia questo file.
     echo.

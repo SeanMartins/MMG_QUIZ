@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Bundled portable Node.js runtime (carried on the USB stick, not in git —
+# ~150MB of binaries; download separately via tools/README.md if missing)
+tools/node-portable/
+
 # Build output
 client/dist/
 
