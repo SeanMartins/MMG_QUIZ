@@ -12,6 +12,9 @@ import {
   X,
   Trophy,
   Timer,
+  ChevronDown,
+  Check,
+  ScrollText,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { THEMES, FONT_OPTIONS, applyChrome } from '../themes.js';
@@ -224,6 +227,15 @@ function BrandingCard({ quiz, onChange }) {
     onChange(await api.updateQuiz(quiz.id, { font_family: fontFamily }));
   }
 
+  const [rulesDraft, setRulesDraft] = useState(quiz.rules_text || '');
+  useEffect(() => setRulesDraft(quiz.rules_text || ''), [quiz.rules_text]);
+
+  async function saveRules() {
+    if (rulesDraft !== (quiz.rules_text || '')) {
+      onChange(await api.updateQuiz(quiz.id, { rules_text: rulesDraft }));
+    }
+  }
+
   const currentThemeTextColor = THEMES[quiz.theme]?.vars['--text'] || '#f4f0ff';
 
   return (
@@ -343,16 +355,107 @@ function BrandingCard({ quiz, onChange }) {
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
             <Type size={16} /> Font testo
           </label>
-          <select value={quiz.font_family || ''} onChange={(e) => setFontFamily(e.target.value)}>
-            {FONT_OPTIONS.map((f) => (
-              <option key={f.value} value={f.value} style={{ fontFamily: f.value || undefined }}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+          <FontPicker value={quiz.font_family || ''} onChange={setFontFamily} />
         </div>
       </div>
+
+      <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
+          <ScrollText size={16} /> Regole del quiz (mostrate ai partecipanti prima e dopo la scansione del QR)
+        </label>
+        <textarea
+          rows={3}
+          style={{ width: '100%', resize: 'vertical' }}
+          placeholder="Es. Ogni squadra risponde dal proprio dispositivo. Punti extra per le risposte più veloci. Buona fortuna!"
+          value={rulesDraft}
+          onChange={(e) => setRulesDraft(e.target.value)}
+          onBlur={saveRules}
+        />
+      </div>
     </section>
+  );
+}
+
+const CUSTOM_FONT_ITEM_STYLE = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '0.6rem',
+  width: '100%',
+  padding: '0.6rem 0.9rem',
+  background: 'none',
+  border: 'none',
+  color: 'var(--text)',
+  textAlign: 'left',
+  fontSize: '0.95rem',
+  cursor: 'pointer',
+};
+
+function FontPicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const current = FONT_OPTIONS.find((f) => f.value === value) || FONT_OPTIONS[0];
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative', maxWidth: 280 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="btn-outline"
+        style={{
+          width: '100%',
+          borderRadius: 10,
+          padding: '0.7rem 1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontFamily: current.value || undefined,
+        }}
+      >
+        {current.label}
+        <ChevronDown size={16} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
+      </button>
+      {open && (
+        <div
+          className="card"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            padding: '0.4rem',
+            maxHeight: 280,
+            overflowY: 'auto',
+          }}
+        >
+          {FONT_OPTIONS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => {
+                onChange(f.value);
+                setOpen(false);
+              }}
+              style={{ ...CUSTOM_FONT_ITEM_STYLE, fontFamily: f.value || undefined }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-strong)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+            >
+              {f.label}
+              {f.value === value && <Check size={16} color="var(--secondary)" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

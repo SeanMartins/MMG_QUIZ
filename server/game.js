@@ -24,6 +24,7 @@ function brandingOf(quiz) {
     textColor: quiz.text_color,
     fontFamily: quiz.font_family,
     backgroundOverlay: quiz.background_overlay,
+    rulesText: quiz.rules_text,
   };
 }
 

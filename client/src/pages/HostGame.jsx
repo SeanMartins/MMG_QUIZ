@@ -18,6 +18,7 @@ import {
   Diamond,
   Circle,
   Square,
+  ScrollText,
 } from 'lucide-react';
 import { socket } from '../socket.js';
 import { api } from '../api.js';
@@ -283,6 +284,14 @@ export default function HostGame() {
                 </ul>
               )}
             </div>
+            {quiz?.rules_text && (
+              <div className="card" style={{ maxWidth: 320 }}>
+                <h2 style={{ marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <ScrollText size={20} /> Regole del quiz
+                </h2>
+                <p style={{ color: 'var(--text-dim)', whiteSpace: 'pre-line', lineHeight: 1.5 }}>{quiz.rules_text}</p>
+              </div>
+            )}
             </div>
           </div>
         )}

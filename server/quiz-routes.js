@@ -86,11 +86,20 @@ router.get('/quizzes/:id', (req, res) => {
 router.patch('/quizzes/:id', (req, res) => {
   const quiz = ownedQuiz(req.params.id, req.uid);
   if (!quiz) return res.status(404).json({ error: 'Quiz non trovato' });
-  const { title, theme, event_title, text_color, font_family, background_overlay, background_url, logo_url } =
-    req.body;
+  const {
+    title,
+    theme,
+    event_title,
+    text_color,
+    font_family,
+    background_overlay,
+    background_url,
+    logo_url,
+    rules_text,
+  } = req.body;
   db.prepare(
     `UPDATE quizzes SET title = ?, theme = ?, event_title = ?, text_color = ?, font_family = ?,
-     background_overlay = ?, background_url = ?, logo_url = ?, updated_at = datetime('now') WHERE id = ?`
+     background_overlay = ?, background_url = ?, logo_url = ?, rules_text = ?, updated_at = datetime('now') WHERE id = ?`
   ).run(
     title ?? quiz.title,
     theme ?? quiz.theme,
@@ -100,6 +109,7 @@ router.patch('/quizzes/:id', (req, res) => {
     background_overlay ?? quiz.background_overlay,
     background_url ?? quiz.background_url,
     logo_url ?? quiz.logo_url,
+    rules_text ?? quiz.rules_text,
     req.params.id
   );
   res.json(serializeQuiz(req.params.id));

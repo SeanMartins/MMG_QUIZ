@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import quizRoutes from './quiz-routes.js';
+import publicRoutes from './public-routes.js';
 import { attachGameHandlers } from './game.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api', publicRoutes);
 app.use('/api', quizRoutes);
 
 app.get('/api/network-info', (req, res) => {

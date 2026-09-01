@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { PartyPopper, AlertTriangle } from 'lucide-react';
+import { PartyPopper, AlertTriangle, ScrollText } from 'lucide-react';
 import { socket } from '../socket.js';
+import { api } from '../api.js';
+import { applyBranding } from '../themes.js';
 
 export default function Join() {
   const { code: codeParam } = useParams();
@@ -10,9 +12,21 @@ export default function Join() {
   const [teamName, setTeamName] = useState('');
   const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
+  const [preview, setPreview] = useState(null);
 
   useEffect(() => {
     if (codeParam) setCode(codeParam.toUpperCase());
+  }, [codeParam]);
+
+  useEffect(() => {
+    if (!codeParam) return;
+    api
+      .gamePreview(codeParam.toUpperCase())
+      .then((p) => {
+        applyBranding(p);
+        setPreview(p);
+      })
+      .catch(() => {});
   }, [codeParam]);
 
   function submit(e) {
@@ -42,55 +56,79 @@ export default function Join() {
         padding: '1.5rem',
       }}
     >
-      <form onSubmit={submit} className="card" style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-          <PartyPopper size={28} aria-hidden /> Unisciti al Quiz
-        </h1>
-        <p style={{ color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
-          Inserisci il codice partita e scegli il nome della tua squadra
-        </p>
-
-        {error && (
-          <div
-            style={{
-              color: '#ff4d4d',
-              marginBottom: '1rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.4rem',
-            }}
-          >
-            <AlertTriangle size={16} /> {error}
-          </div>
+      <div style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {preview?.logoUrl && (
+          <img
+            src={preview.logoUrl}
+            alt="Logo evento"
+            style={{ height: 48, alignSelf: 'center', background: 'white', borderRadius: 8, padding: 4 }}
+          />
         )}
 
-        <input
-          style={{
-            width: '100%',
-            fontSize: '1.6rem',
-            letterSpacing: '0.3rem',
-            textAlign: 'center',
-            textTransform: 'uppercase',
-            marginBottom: '1rem',
-          }}
-          maxLength={5}
-          placeholder="CODICE"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-        />
-        <input
-          style={{ width: '100%', fontSize: '1.1rem', textAlign: 'center', marginBottom: '1.2rem' }}
-          placeholder="Nome squadra"
-          maxLength={40}
-          value={teamName}
-          onChange={(e) => setTeamName(e.target.value)}
-        />
-        <button className="btn" type="submit" style={{ width: '100%' }} disabled={joining}>
-          {joining ? 'Entrando...' : 'Entra in partita →'}
-        </button>
-      </form>
+        <form onSubmit={submit} className="card" style={{ width: '100%', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <PartyPopper size={28} aria-hidden /> Unisciti al Quiz
+          </h1>
+          {preview?.eventTitle && (
+            <p style={{ color: 'var(--accent)', fontWeight: 700, marginBottom: '0.3rem' }}>{preview.eventTitle}</p>
+          )}
+          <p style={{ color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
+            Inserisci il codice partita e scegli il nome della tua squadra
+          </p>
+
+          {error && (
+            <div
+              style={{
+                color: '#ff4d4d',
+                marginBottom: '1rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+              }}
+            >
+              <AlertTriangle size={16} /> {error}
+            </div>
+          )}
+
+          <input
+            style={{
+              width: '100%',
+              fontSize: '1.6rem',
+              letterSpacing: '0.3rem',
+              textAlign: 'center',
+              textTransform: 'uppercase',
+              marginBottom: '1rem',
+            }}
+            maxLength={5}
+            placeholder="CODICE"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+          />
+          <input
+            style={{ width: '100%', fontSize: '1.1rem', textAlign: 'center', marginBottom: '1.2rem' }}
+            placeholder="Nome squadra"
+            maxLength={40}
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+          />
+          <button className="btn" type="submit" style={{ width: '100%' }} disabled={joining}>
+            {joining ? 'Entrando...' : 'Entra in partita →'}
+          </button>
+        </form>
+
+        {preview?.rulesText && (
+          <div className="card" style={{ textAlign: 'left' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem' }}>
+              <ScrollText size={18} /> Regole del quiz
+            </h3>
+            <p style={{ color: 'var(--text-dim)', whiteSpace: 'pre-line', lineHeight: 1.5, fontSize: '0.9rem' }}>
+              {preview.rulesText}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

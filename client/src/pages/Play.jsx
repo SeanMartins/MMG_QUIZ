@@ -13,6 +13,7 @@ import {
   Diamond,
   Circle,
   Square,
+  ScrollText,
 } from 'lucide-react';
 import { socket } from '../socket.js';
 import { applyBranding } from '../themes.js';
@@ -35,6 +36,7 @@ export default function Play() {
   const [leaderboard, setLeaderboard] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [rulesText, setRulesText] = useState('');
   const teamIdRef = useRef(null);
 
   useEffect(() => {
@@ -57,6 +59,7 @@ export default function Play() {
         }
         applyBranding(res);
         setLogoUrl(res.logoUrl || null);
+        setRulesText(res.rulesText || '');
         setScreen(res.gameStatus === 'lobby' ? 'lobby' : 'waiting');
       });
     }
@@ -175,11 +178,21 @@ export default function Play() {
       )}
 
       {screen === 'lobby' && (
-        <div className="card" style={{ maxWidth: 420 }}>
-          <h2 style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+        <div className="card" style={{ maxWidth: 420, textAlign: 'left' }}>
+          <h2 style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', textAlign: 'center' }}>
             <CheckCircle2 size={24} /> Sei dentro, {teamName}!
           </h2>
-          <p style={{ color: 'var(--text-dim)' }}>In attesa che l'host avvii il quiz...</p>
+          <p style={{ color: 'var(--text-dim)', textAlign: 'center' }}>In attesa che l'host avvii il quiz...</p>
+          {rulesText && (
+            <div style={{ marginTop: '1.2rem', paddingTop: '1.2rem', borderTop: '1px solid var(--border)' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem' }}>
+                <ScrollText size={18} /> Regole del quiz
+              </h3>
+              <p style={{ color: 'var(--text-dim)', whiteSpace: 'pre-line', lineHeight: 1.5, fontSize: '0.9rem' }}>
+                {rulesText}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

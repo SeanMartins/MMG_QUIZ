@@ -76,6 +76,7 @@ export const api = {
   deleteQuestion: (id) => request(`/questions/${id}`, { method: 'DELETE' }),
 
   networkInfo: () => request('/network-info'),
+  gamePreview: (code) => request(`/games/${code}/preview`),
   gameResults: (code) => request(`/games/${code}/results`),
   exportUrl: async (code, format) => {
     const res = await fetch(`${BASE}/games/${code}/export.${format}`, { headers: await authHeaders() });
