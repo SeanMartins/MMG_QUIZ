@@ -2,6 +2,7 @@ import { customAlphabet } from 'nanoid';
 import db from './db.js';
 import { serializeQuiz } from './quiz-routes.js';
 import { computePoints } from './scoring.js';
+import { verifyIdToken } from './auth.js';
 
 const genCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 5);
 
@@ -61,9 +62,15 @@ export function attachGameHandlers(io) {
     socket.data.teamId = null;
 
     // ---------- HOST ----------
-    socket.on('host:create', ({ quizId }, ack) => {
+    socket.on('host:create', async ({ quizId, idToken }, ack) => {
+      let uid;
+      try {
+        uid = (await verifyIdToken(idToken)).sub;
+      } catch {
+        return ack?.({ error: 'Sessione scaduta, effettua di nuovo il login' });
+      }
       const quiz = serializeQuiz(quizId);
-      if (!quiz) return ack?.({ error: 'Quiz non trovato' });
+      if (!quiz || quiz.owner_uid !== uid) return ack?.({ error: 'Quiz non trovato' });
       if (!quiz.sessions.length || quiz.sessions.every((s) => s.questions.length === 0)) {
         return ack?.({ error: 'Aggiungi almeno una domanda prima di avviare il gioco' });
       }

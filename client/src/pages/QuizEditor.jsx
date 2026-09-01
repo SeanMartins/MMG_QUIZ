@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../api.js';
-import { THEMES, FONT_OPTIONS } from '../themes.js';
+import { THEMES, FONT_OPTIONS, applyChrome } from '../themes.js';
+import AnimatedBackground from '../components/AnimatedBackground.jsx';
 
 export default function QuizEditor() {
   const { id } = useParams();
@@ -20,6 +21,9 @@ export default function QuizEditor() {
       .catch((e) => setError(e.message));
   }, [id]);
 
+  useEffect(() => {
+    applyChrome();
+  }, []);
   useEffect(load, [load]);
 
   if (error) return <div style={{ padding: '2rem' }}>⚠️ {error}</div>;
@@ -45,14 +49,16 @@ export default function QuizEditor() {
   const theme = THEMES[quiz.theme] || THEMES.neon;
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem 5rem' }}>
+    <>
+      <AnimatedBackground />
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(1.2rem, 4vw, 2rem) 1.5rem 5rem' }}>
       <Link to="/" style={{ color: 'var(--text-dim)', textDecoration: 'none' }}>
         ← Torna ai quiz
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1rem 0 2rem' }}>
         <input
-          style={{ fontSize: '1.6rem', fontWeight: 700, flex: 1 }}
+          style={{ fontSize: '1.6rem', fontWeight: 700, flex: 1, minWidth: 0 }}
           value={titleDraft}
           onChange={(e) => setTitleDraft(e.target.value)}
           onBlur={saveTitle}
@@ -122,7 +128,8 @@ export default function QuizEditor() {
           <SessionCard key={session.id} session={session} index={i} onChange={setQuiz} />
         ))}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -155,7 +162,7 @@ function BrandingCard({ quiz, onChange }) {
   }
 
   async function removeBackground() {
-    onChange(await api.deleteBackground(quiz.id));
+    onChange(await api.deleteBackground(quiz.id, quiz.background_url));
   }
 
   async function onLogoChange(e) {
@@ -173,7 +180,7 @@ function BrandingCard({ quiz, onChange }) {
   }
 
   async function removeLogo() {
-    onChange(await api.deleteLogo(quiz.id));
+    onChange(await api.deleteLogo(quiz.id, quiz.logo_url));
   }
 
   const [overlayDraft, setOverlayDraft] = useState(quiz.background_overlay ?? 0.5);
@@ -468,7 +475,10 @@ function QuestionCard({ question, index, onChange }) {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.8rem' }}>
+      <div
+        className="responsive-grid-2"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.8rem' }}
+      >
         {local.options.map((opt, i) => (
           <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
             <input

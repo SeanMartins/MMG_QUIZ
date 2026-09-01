@@ -1,3 +1,39 @@
+// Design system for the "chrome" (admin) surfaces — quiz list, editor, login.
+// Kept separate from the per-quiz game THEMES below so a host's game-screen theme
+// choice never leaks into the management UI.
+export const CHROME_VARS = {
+  '--bg': '#05060a',
+  '--bg-gradient':
+    'radial-gradient(circle at 15% -10%, rgba(91,140,255,0.16) 0%, transparent 45%), ' +
+    'radial-gradient(circle at 90% 10%, rgba(34,230,200,0.10) 0%, transparent 40%), ' +
+    'radial-gradient(circle at 50% 120%, rgba(139,92,246,0.12) 0%, transparent 55%)',
+  '--surface': 'rgba(255,255,255,0.045)',
+  '--surface-strong': 'rgba(255,255,255,0.09)',
+  '--text': '#eef2f9',
+  '--text-dim': '#8d99b3',
+  '--primary': '#5b8cff',
+  '--secondary': '#22e6c8',
+  '--accent': '#22e6c8',
+  '--border': 'rgba(255,255,255,0.09)',
+  '--font-heading': "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  '--font-body': "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  '--answer-1': '#5b8cff',
+  '--answer-2': '#22e6c8',
+  '--answer-3': '#f5c542',
+  '--answer-4': '#37ff8b',
+};
+
+export function applyChrome() {
+  const root = document.documentElement;
+  Object.entries(CHROME_VARS).forEach(([key, value]) => {
+    root.style.setProperty(key, value);
+  });
+  document.body.style.backgroundImage = '';
+  document.body.style.backgroundSize = '';
+  document.body.style.backgroundPosition = '';
+  document.body.style.backgroundAttachment = '';
+}
+
 export const THEMES = {
   neon: {
     label: 'Neon Night',

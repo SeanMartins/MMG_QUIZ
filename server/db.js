@@ -78,6 +78,7 @@ for (const [column, ddl] of [
   ['text_color', 'ALTER TABLE quizzes ADD COLUMN text_color TEXT'],
   ['font_family', 'ALTER TABLE quizzes ADD COLUMN font_family TEXT'],
   ['background_overlay', 'ALTER TABLE quizzes ADD COLUMN background_overlay REAL DEFAULT 0.5'],
+  ['owner_uid', 'ALTER TABLE quizzes ADD COLUMN owner_uid TEXT'],
 ]) {
   if (!quizColumns.has(column)) db.exec(ddl);
 }

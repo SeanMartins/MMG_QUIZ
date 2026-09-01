@@ -18,6 +18,11 @@ server/uploads/logos/*
 !server/uploads/backgrounds/.gitkeep
 !server/uploads/logos/.gitkeep
 
+# Firebase credentials (never commit)
+server/firebase-service-account*.json*
+.env
+.env.local
+
 # Logs
 *.log
 npm-debug.log*

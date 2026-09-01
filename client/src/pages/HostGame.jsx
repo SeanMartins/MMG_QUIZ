@@ -14,6 +14,7 @@ export default function HostGame() {
   const navigate = useNavigate();
   const [phase, setPhase] = useState('connecting');
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [quiz, setQuiz] = useState(null);
   const [teams, setTeams] = useState([]);
   const [sessionInfo, setSessionInfo] = useState(null);
@@ -181,6 +182,22 @@ export default function HostGame() {
     socket.emit('host:end', { code }, (res) => {
       if (res?.error) setError(res.error);
     });
+  }
+
+  async function downloadExport(format) {
+    setExporting(true);
+    try {
+      const blobUrl = await api.exportUrl(code, format);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `risultati-${code}.${format}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setExporting(false);
+    }
   }
 
   const isLastQuestion =
@@ -401,20 +418,12 @@ export default function HostGame() {
 
             {phase === 'ended' && (
               <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center', marginTop: '1.5rem' }}>
-                <a
-                  className="btn btn-secondary"
-                  style={{ textDecoration: 'none' }}
-                  href={`/api/games/${code}/export.xlsx`}
-                >
+                <button className="btn btn-secondary" onClick={() => downloadExport('xlsx')} disabled={exporting}>
                   📊 Esporta Excel
-                </a>
-                <a
-                  className="btn btn-secondary"
-                  style={{ textDecoration: 'none' }}
-                  href={`/api/games/${code}/export.pdf`}
-                >
+                </button>
+                <button className="btn btn-secondary" onClick={() => downloadExport('pdf')} disabled={exporting}>
                   📄 Esporta PDF
-                </a>
+                </button>
               </div>
             )}
           </div>
