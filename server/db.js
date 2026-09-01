@@ -80,8 +80,37 @@ for (const [column, ddl] of [
   ['background_overlay', 'ALTER TABLE quizzes ADD COLUMN background_overlay REAL DEFAULT 0.5'],
   ['owner_uid', 'ALTER TABLE quizzes ADD COLUMN owner_uid TEXT'],
   ['rules_text', 'ALTER TABLE quizzes ADD COLUMN rules_text TEXT'],
+  // 'team' (existing flow) | 'anonymous' | 'nickname' | 'named' (name + email)
+  ['participant_mode', "ALTER TABLE quizzes ADD COLUMN participant_mode TEXT NOT NULL DEFAULT 'team'"],
 ]) {
   if (!quizColumns.has(column)) db.exec(ddl);
+}
+
+const questionColumns = new Set(db.prepare('PRAGMA table_info(questions)').all().map((c) => c.name));
+for (const [column, ddl] of [
+  // 'multiple_choice' (scored team game, unchanged) | 'poll' (choice, optional
+  // correct answer) | 'word_cloud' | 'open_ended' | 'rating_scale'
+  ['type', "ALTER TABLE questions ADD COLUMN type TEXT NOT NULL DEFAULT 'multiple_choice'"],
+  // 'manual' (host clicks Rivela, like today) | 'live' (results stream in as
+  // answers arrive). word_cloud/open_ended are always treated as live.
+  ['reveal_mode', "ALTER TABLE questions ADD COLUMN reveal_mode TEXT NOT NULL DEFAULT 'manual'"],
+]) {
+  if (!questionColumns.has(column)) db.exec(ddl);
+}
+
+const teamColumns = new Set(db.prepare('PRAGMA table_info(teams)').all().map((c) => c.name));
+for (const [column, ddl] of [
+  ['email', 'ALTER TABLE teams ADD COLUMN email TEXT'],
+]) {
+  if (!teamColumns.has(column)) db.exec(ddl);
+}
+
+const answerColumns = new Set(db.prepare('PRAGMA table_info(answers)').all().map((c) => c.name));
+for (const [column, ddl] of [
+  ['answer_text', 'ALTER TABLE answers ADD COLUMN answer_text TEXT'],
+  ['answer_value', 'ALTER TABLE answers ADD COLUMN answer_value INTEGER'],
+]) {
+  if (!answerColumns.has(column)) db.exec(ddl);
 }
 
 export default db;

@@ -5,14 +5,25 @@ import { socket } from '../socket.js';
 import { api } from '../api.js';
 import { applyBranding } from '../themes.js';
 
+const NAME_LABEL = {
+  team: 'Nome squadra',
+  nickname: 'Il tuo nome',
+  named: 'Nome e cognome',
+};
+
 export default function Join() {
   const { code: codeParam } = useParams();
   const navigate = useNavigate();
   const [code, setCode] = useState(codeParam || '');
   const [teamName, setTeamName] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
   const [preview, setPreview] = useState(null);
+
+  const mode = preview?.participantMode || 'team';
+  const needsName = mode !== 'anonymous';
+  const needsEmail = mode === 'named';
 
   useEffect(() => {
     if (codeParam) setCode(codeParam.toUpperCase());
@@ -31,11 +42,13 @@ export default function Join() {
 
   function submit(e) {
     e.preventDefault();
-    if (!code.trim() || !teamName.trim()) return;
+    if (!code.trim()) return;
+    if (needsName && !teamName.trim()) return;
+    if (needsEmail && !email.trim()) return;
     setJoining(true);
     setError('');
     const upperCode = code.trim().toUpperCase();
-    socket.emit('player:join', { code: upperCode, teamName: teamName.trim() }, (res) => {
+    socket.emit('player:join', { code: upperCode, teamName: teamName.trim(), email: email.trim() }, (res) => {
       setJoining(false);
       if (res?.error) return setError(res.error);
       localStorage.setItem(
@@ -73,7 +86,9 @@ export default function Join() {
             <p style={{ color: 'var(--accent)', fontWeight: 700, marginBottom: '0.3rem' }}>{preview.eventTitle}</p>
           )}
           <p style={{ color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
-            Inserisci il codice partita e scegli il nome della tua squadra
+            {mode === 'anonymous'
+              ? 'Inserisci il codice partita per iniziare'
+              : 'Inserisci il codice partita e i tuoi dati'}
           </p>
 
           {error && (
@@ -106,14 +121,25 @@ export default function Join() {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
           />
-          <input
-            style={{ width: '100%', fontSize: '1.1rem', textAlign: 'center', marginBottom: '1.2rem' }}
-            placeholder="Nome squadra"
-            maxLength={40}
-            value={teamName}
-            onChange={(e) => setTeamName(e.target.value)}
-          />
-          <button className="btn" type="submit" style={{ width: '100%' }} disabled={joining}>
+          {needsName && (
+            <input
+              style={{ width: '100%', fontSize: '1.1rem', textAlign: 'center', marginBottom: '1rem' }}
+              placeholder={NAME_LABEL[mode] || 'Il tuo nome'}
+              maxLength={60}
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+            />
+          )}
+          {needsEmail && (
+            <input
+              type="email"
+              style={{ width: '100%', fontSize: '1.05rem', textAlign: 'center', marginBottom: '1.2rem' }}
+              placeholder="La tua email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          )}
+          <button className="btn" type="submit" style={{ width: '100%', marginTop: needsEmail ? 0 : '0.2rem' }} disabled={joining}>
             {joining ? 'Entrando...' : 'Entra in partita →'}
           </button>
         </form>

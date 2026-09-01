@@ -25,6 +25,7 @@ import { api } from '../api.js';
 import { applyBranding } from '../themes.js';
 import { playDrumRoll } from '../sound.js';
 import { questionFontSize, questionTextAlign, optionFontSize, isLongOptionSet } from '../textFit.js';
+import QuestionResultsView from '../components/QuestionResultsView.jsx';
 
 const SHAPES = [Triangle, Diamond, Circle, Square];
 
@@ -39,6 +40,7 @@ export default function HostGame() {
   const [sessionInfo, setSessionInfo] = useState(null);
   const [question, setQuestion] = useState(null);
   const [answeredTeamIds, setAnsweredTeamIds] = useState([]);
+  const [liveAnswers, setLiveAnswers] = useState([]);
   const [reveal, setReveal] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null);
   const [showingLeaderboard, setShowingLeaderboard] = useState(false);
@@ -86,12 +88,17 @@ export default function HostGame() {
     socket.on('state:question-host', (payload) => {
       setQuestion(payload);
       setAnsweredTeamIds([]);
+      setLiveAnswers([]);
       setShowingLeaderboard(false);
       setPhase('question');
     });
 
     socket.on('state:answer-received', ({ teamId }) => {
       setAnsweredTeamIds((prev) => (prev.includes(teamId) ? prev : [...prev, teamId]));
+    });
+
+    socket.on('state:live-answer', (payload) => {
+      setLiveAnswers((prev) => [...prev, payload]);
     });
 
     socket.on('state:reveal', (payload) => {
@@ -116,6 +123,7 @@ export default function HostGame() {
       socket.off('state:session-intro');
       socket.off('state:question-host');
       socket.off('state:answer-received');
+      socket.off('state:live-answer');
       socket.off('state:reveal');
       socket.off('state:leaderboard');
       socket.off('state:game-ended');
@@ -162,8 +170,17 @@ export default function HostGame() {
     });
   }
 
+  const resultsAlreadyLive =
+    question?.type === 'word_cloud' || question?.type === 'open_ended' || question?.revealMode === 'live';
+
   function revealAnswer() {
     audioRef.current?.pause();
+    if (resultsAlreadyLive) {
+      socket.emit('host:reveal', { code }, (res) => {
+        if (res?.error) setError(res.error);
+      });
+      return;
+    }
     setPhase('drumroll');
     let durationMs = 1800;
     try {
@@ -330,39 +347,56 @@ export default function HostGame() {
             >
               {question.text}
             </h1>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: isLongOptionSet(question.options) ? '1fr' : '1fr 1fr',
-                gap: '1rem',
-                marginBottom: '1.5rem',
-              }}
-            >
-              {question.options.map((opt, i) => {
-                const Shape = SHAPES[i];
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      background: `var(--answer-${i + 1})`,
-                      borderRadius: 12,
-                      padding: '1.2rem',
-                      fontSize: optionFontSize(opt),
-                      lineHeight: 1.35,
-                      fontWeight: 700,
-                      color: '#12081f',
-                      textAlign: opt.length > 60 ? 'left' : 'center',
-                      wordBreak: 'break-word',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.6rem',
-                    }}
-                  >
-                    <Shape size={20} style={{ flexShrink: 0 }} /> {opt}
-                  </div>
-                );
-              })}
-            </div>
+
+            {(question.type === 'multiple_choice' || question.type === 'poll') && (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isLongOptionSet(question.options) ? '1fr' : '1fr 1fr',
+                  gap: '1rem',
+                  marginBottom: '1.5rem',
+                }}
+              >
+                {question.options.map((opt, i) => {
+                  const Shape = SHAPES[i];
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        background: `var(--answer-${i + 1})`,
+                        borderRadius: 12,
+                        padding: '1.2rem',
+                        fontSize: optionFontSize(opt),
+                        lineHeight: 1.35,
+                        fontWeight: 700,
+                        color: '#12081f',
+                        textAlign: opt.length > 60 ? 'left' : 'center',
+                        wordBreak: 'break-word',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                      }}
+                    >
+                      <Shape size={20} style={{ flexShrink: 0 }} /> {opt}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {(question.type === 'word_cloud' ||
+              question.type === 'open_ended' ||
+              question.revealMode === 'live') && (
+              <div className="card" style={{ marginBottom: '1.5rem' }}>
+                <QuestionResultsView
+                  type={question.type}
+                  options={question.options}
+                  answers={liveAnswers}
+                  correctIndex={null}
+                  shapes={SHAPES}
+                />
+              </div>
+            )}
 
             <div
               className="card"
@@ -417,52 +451,69 @@ export default function HostGame() {
 
         {phase === 'reveal' && reveal && !showingLeaderboard && (
           <div style={{ width: '100%', maxWidth: 700, textAlign: 'center' }}>
-            <h2
-              style={{
-                marginBottom: '1rem',
-                fontSize: optionFontSize(question?.options[reveal.correctIndex] || ''),
-                lineHeight: 1.35,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              Risposta corretta:
-              {(() => {
-                const Shape = SHAPES[reveal.correctIndex];
-                return <Shape size={20} />;
-              })()}
-              {question?.options[reveal.correctIndex]}
-            </h2>
-            <div className="card">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <tbody>
-                  {reveal.results
-                    .sort((a, b) => b.pointsAwarded - a.pointsAwarded)
-                    .map((r) => (
-                      <tr key={r.teamId} style={{ borderTop: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.5rem', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {r.correct ? (
-                            <CheckCircle2 size={16} color="#37ff8b" />
-                          ) : r.answered ? (
-                            <XCircle size={16} color="#ff4d6d" />
-                          ) : (
-                            <Hourglass size={16} color="var(--text-dim)" />
-                          )}
-                          {r.teamName}
-                        </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 700 }}>
-                          +{r.pointsAwarded}
-                        </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--text-dim)' }}>
-                          {r.totalScore}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            {(reveal.type === 'multiple_choice' || (reveal.type === 'poll' && reveal.correctIndex !== -1)) && (
+              <h2
+                style={{
+                  marginBottom: '1rem',
+                  fontSize: optionFontSize(question?.options[reveal.correctIndex] || ''),
+                  lineHeight: 1.35,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                Risposta corretta:
+                {(() => {
+                  const Shape = SHAPES[reveal.correctIndex];
+                  return <Shape size={20} />;
+                })()}
+                {question?.options[reveal.correctIndex]}
+              </h2>
+            )}
+
+            {reveal.type !== 'multiple_choice' && (
+              <div className="card" style={{ marginBottom: '1.5rem' }}>
+                <QuestionResultsView
+                  type={reveal.type}
+                  options={question?.options}
+                  answers={reveal.results}
+                  correctIndex={reveal.correctIndex}
+                  shapes={SHAPES}
+                />
+              </div>
+            )}
+
+            {(reveal.type === 'multiple_choice' || (reveal.type === 'poll' && reveal.correctIndex !== -1)) && (
+              <div className="card">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {reveal.results
+                      .sort((a, b) => b.pointsAwarded - a.pointsAwarded)
+                      .map((r) => (
+                        <tr key={r.teamId} style={{ borderTop: '1px solid var(--border)' }}>
+                          <td style={{ padding: '0.5rem', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {r.correct ? (
+                              <CheckCircle2 size={16} color="#37ff8b" />
+                            ) : r.answered ? (
+                              <XCircle size={16} color="#ff4d6d" />
+                            ) : (
+                              <Hourglass size={16} color="var(--text-dim)" />
+                            )}
+                            {r.teamName}
+                          </td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 700 }}>
+                            +{r.pointsAwarded}
+                          </td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: 'var(--text-dim)' }}>
+                            {r.totalScore}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -555,7 +606,7 @@ export default function HostGame() {
               ...(allAnswered ? { background: 'var(--accent)', animation: 'pulse-glow 1s infinite' } : {}),
             }}
           >
-            Rivela risposta {allAnswered && <CheckCircle2 size={16} />}
+            {resultsAlreadyLive ? 'Chiudi e continua' : 'Rivela risposta'} {allAnswered && <CheckCircle2 size={16} />}
           </button>
         )}
         {phase === 'reveal' && (

@@ -20,6 +20,7 @@ router.get('/games/:code/preview', (req, res) => {
     fontFamily: quiz.font_family,
     backgroundOverlay: quiz.background_overlay,
     rulesText: quiz.rules_text,
+    participantMode: quiz.participant_mode,
   });
 });
 

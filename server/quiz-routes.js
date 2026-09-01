@@ -96,10 +96,12 @@ router.patch('/quizzes/:id', (req, res) => {
     background_url,
     logo_url,
     rules_text,
+    participant_mode,
   } = req.body;
   db.prepare(
     `UPDATE quizzes SET title = ?, theme = ?, event_title = ?, text_color = ?, font_family = ?,
-     background_overlay = ?, background_url = ?, logo_url = ?, rules_text = ?, updated_at = datetime('now') WHERE id = ?`
+     background_overlay = ?, background_url = ?, logo_url = ?, rules_text = ?, participant_mode = ?,
+     updated_at = datetime('now') WHERE id = ?`
   ).run(
     title ?? quiz.title,
     theme ?? quiz.theme,
@@ -110,6 +112,7 @@ router.patch('/quizzes/:id', (req, res) => {
     background_url ?? quiz.background_url,
     logo_url ?? quiz.logo_url,
     rules_text ?? quiz.rules_text,
+    participant_mode ?? quiz.participant_mode,
     req.params.id
   );
   res.json(serializeQuiz(req.params.id));
@@ -155,23 +158,50 @@ router.delete('/sessions/:id', (req, res) => {
 });
 
 // ---- Questions ----
+const QUESTION_TYPES = ['multiple_choice', 'poll', 'word_cloud', 'open_ended', 'rating_scale'];
+
+function defaultOptionsFor(type) {
+  if (type === 'rating_scale') return { min: 1, max: 5, minLabel: '', maxLabel: '' };
+  if (type === 'word_cloud' || type === 'open_ended') return [];
+  return ['Risposta A', 'Risposta B', 'Risposta C', 'Risposta D'];
+}
+
+// word_cloud/open_ended have no notion of a correct answer or manual reveal —
+// they're always a live, ungraded stream of free-text responses.
+function normalizeRevealMode(type, revealMode) {
+  if (type === 'word_cloud' || type === 'open_ended') return 'live';
+  return revealMode === 'live' ? 'live' : 'manual';
+}
+
 router.post('/sessions/:id/questions', (req, res) => {
   const session = ownedSession(req.params.id, req.uid);
   if (!session) return res.status(404).json({ error: 'Sessione non trovata' });
+  const type = QUESTION_TYPES.includes(req.body.type) ? req.body.type : 'multiple_choice';
   const {
     text = 'Nuova domanda',
-    options = ['Risposta A', 'Risposta B', 'Risposta C', 'Risposta D'],
-    correct_index = 0,
+    options = defaultOptionsFor(type),
+    correct_index = type === 'multiple_choice' ? 0 : -1,
     time_limit_seconds = 20,
     points = 1000,
+    reveal_mode = 'manual',
   } = req.body;
   const { count } = db
     .prepare('SELECT COUNT(*) as count FROM questions WHERE session_id = ?')
     .get(req.params.id);
   db.prepare(
-    `INSERT INTO questions (session_id, order_index, text, options, correct_index, time_limit_seconds, points)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(req.params.id, count, text, JSON.stringify(options), correct_index, time_limit_seconds, points);
+    `INSERT INTO questions (session_id, order_index, text, options, correct_index, time_limit_seconds, points, type, reveal_mode)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    req.params.id,
+    count,
+    text,
+    JSON.stringify(options),
+    correct_index,
+    time_limit_seconds,
+    points,
+    type,
+    normalizeRevealMode(type, reveal_mode)
+  );
   res.status(201).json(serializeQuiz(session.quiz_id));
 });
 
@@ -179,17 +209,28 @@ router.patch('/questions/:id', (req, res) => {
   const question = ownedQuestion(req.params.id, req.uid);
   if (!question) return res.status(404).json({ error: 'Domanda non trovata' });
   const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(question.session_id);
+  const type = QUESTION_TYPES.includes(req.body.type) ? req.body.type : question.type;
   const {
     text = question.text,
     options = JSON.parse(question.options),
     correct_index = question.correct_index,
     time_limit_seconds = question.time_limit_seconds,
     points = question.points,
+    reveal_mode = question.reveal_mode,
   } = req.body;
   db.prepare(
-    `UPDATE questions SET text = ?, options = ?, correct_index = ?, time_limit_seconds = ?, points = ?
-     WHERE id = ?`
-  ).run(text, JSON.stringify(options), correct_index, time_limit_seconds, points, req.params.id);
+    `UPDATE questions SET text = ?, options = ?, correct_index = ?, time_limit_seconds = ?, points = ?,
+     type = ?, reveal_mode = ? WHERE id = ?`
+  ).run(
+    text,
+    JSON.stringify(options),
+    correct_index,
+    time_limit_seconds,
+    points,
+    type,
+    normalizeRevealMode(type, reveal_mode),
+    req.params.id
+  );
   res.json(serializeQuiz(session.quiz_id));
 });
 

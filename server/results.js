@@ -32,6 +32,7 @@ export function buildResults(code) {
     questions.forEach((q, idx) => {
       const a = answerMap.get(`${team.id}-${q.id}`);
       const options = JSON.parse(q.options);
+      const isScored = q.type === 'multiple_choice' || q.type === 'poll';
       let status = 'Nessuna risposta';
       let answerText = '-';
       let timeSec = null;
@@ -41,11 +42,24 @@ export function buildResults(code) {
         answeredCount++;
         totalTimeMs += a.time_taken_ms;
         timeSec = Math.round((a.time_taken_ms / 100)) / 10;
-        answerText = a.answer_index != null ? options[a.answer_index] : '-';
-        status = a.correct ? 'Corretta' : 'Sbagliata';
         points = a.points_awarded;
-        if (a.correct) correctCount++;
-        else wrongCount++;
+
+        if (q.type === 'word_cloud' || q.type === 'open_ended') {
+          answerText = a.answer_text ?? '-';
+          status = 'Registrata';
+        } else if (q.type === 'rating_scale') {
+          answerText = a.answer_value != null ? String(a.answer_value) : '-';
+          status = 'Registrata';
+        } else {
+          answerText = a.answer_index != null ? options[a.answer_index] : '-';
+          if (isScored && q.correct_index !== -1) {
+            status = a.correct ? 'Corretta' : 'Sbagliata';
+            if (a.correct) correctCount++;
+            else wrongCount++;
+          } else {
+            status = 'Registrata';
+          }
+        }
       } else {
         noAnswerCount++;
       }

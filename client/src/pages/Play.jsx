@@ -31,6 +31,8 @@ export default function Play() {
   const [sessionInfo, setSessionInfo] = useState(null);
   const [question, setQuestion] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [textDraft, setTextDraft] = useState('');
   const [answerError, setAnswerError] = useState('');
   const [reveal, setReveal] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null);
@@ -76,6 +78,8 @@ export default function Play() {
     socket.on('state:question', (payload) => {
       setQuestion(payload);
       setSelected(null);
+      setHasAnswered(false);
+      setTextDraft('');
       setAnswerError('');
       setScreen('question');
     });
@@ -123,11 +127,29 @@ export default function Play() {
   }, [screen, question]);
 
   function answer(idx) {
-    if (selected !== null) return;
+    if (hasAnswered) return;
     setSelected(idx);
-    socket.emit('player:answer', { code, questionId: question.id, answerIndex: idx }, (res) => {
+    submitAnswer({ answerIndex: idx });
+  }
+
+  function submitText() {
+    const text = textDraft.trim();
+    if (!text || hasAnswered) return;
+    submitAnswer({ answerText: text });
+  }
+
+  function submitRating(value) {
+    if (hasAnswered) return;
+    setSelected(value);
+    submitAnswer({ answerValue: value });
+  }
+
+  function submitAnswer(payload) {
+    setHasAnswered(true);
+    socket.emit('player:answer', { code, questionId: question.id, ...payload }, (res) => {
       if (res?.error) {
         setAnswerError(res.error);
+        setHasAnswered(false);
       } else {
         setScreen('answered');
       }
@@ -238,40 +260,107 @@ export default function Play() {
               {question.text}
             </p>
           </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isLongOptionSet(question.options) ? '1fr' : '1fr 1fr',
-              gap: '0.8rem',
-            }}
-          >
-            {question.options.map((opt, i) => {
-              const Shape = SHAPES[i];
-              return (
-                <button
-                  key={i}
-                  onClick={() => answer(i)}
-                  disabled={selected !== null}
-                  className="btn"
-                  style={{
-                    background: `var(--answer-${i + 1})`,
-                    minHeight: 90,
-                    fontSize: optionFontSize(opt),
-                    lineHeight: 1.3,
-                    textAlign: opt.length > 60 ? 'left' : 'center',
-                    opacity: selected !== null && selected !== i ? 0.4 : 1,
-                    border: selected === i ? '3px solid white' : 'none',
-                    wordBreak: 'break-word',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <Shape size={18} style={{ flexShrink: 0 }} /> {opt}
-                </button>
-              );
-            })}
-          </div>
+          {(question.type === 'multiple_choice' || question.type === 'poll') && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isLongOptionSet(question.options) ? '1fr' : '1fr 1fr',
+                gap: '0.8rem',
+              }}
+            >
+              {question.options.map((opt, i) => {
+                const Shape = SHAPES[i];
+                return (
+                  <button
+                    key={i}
+                    onClick={() => answer(i)}
+                    disabled={hasAnswered}
+                    className="btn"
+                    style={{
+                      background: `var(--answer-${i + 1})`,
+                      minHeight: 90,
+                      fontSize: optionFontSize(opt),
+                      lineHeight: 1.3,
+                      textAlign: opt.length > 60 ? 'left' : 'center',
+                      opacity: hasAnswered && selected !== i ? 0.4 : 1,
+                      border: selected === i ? '3px solid white' : 'none',
+                      wordBreak: 'break-word',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <Shape size={18} style={{ flexShrink: 0 }} /> {opt}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {(question.type === 'word_cloud' || question.type === 'open_ended') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              {question.type === 'word_cloud' ? (
+                <input
+                  autoFocus
+                  maxLength={40}
+                  placeholder="Scrivi una parola o breve frase..."
+                  value={textDraft}
+                  onChange={(e) => setTextDraft(e.target.value)}
+                  disabled={hasAnswered}
+                  style={{ fontSize: '1.1rem', textAlign: 'center' }}
+                  onKeyDown={(e) => e.key === 'Enter' && submitText()}
+                />
+              ) : (
+                <textarea
+                  autoFocus
+                  rows={4}
+                  maxLength={300}
+                  placeholder="Scrivi la tua risposta..."
+                  value={textDraft}
+                  onChange={(e) => setTextDraft(e.target.value)}
+                  disabled={hasAnswered}
+                  style={{ fontSize: '1rem', resize: 'vertical' }}
+                />
+              )}
+              <button className="btn" onClick={submitText} disabled={hasAnswered || !textDraft.trim()}>
+                Invia risposta →
+              </button>
+            </div>
+          )}
+
+          {question.type === 'rating_scale' && (
+            <div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {Array.from(
+                  { length: (question.options.max ?? 5) - (question.options.min ?? 1) + 1 },
+                  (_, i) => (question.options.min ?? 1) + i
+                ).map((v) => (
+                  <button
+                    key={v}
+                    className="btn"
+                    onClick={() => submitRating(v)}
+                    disabled={hasAnswered}
+                    style={{
+                      minWidth: 52,
+                      minHeight: 52,
+                      fontSize: '1.2rem',
+                      opacity: hasAnswered && selected !== v ? 0.4 : 1,
+                      border: selected === v ? '3px solid white' : 'none',
+                    }}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+              {(question.options.minLabel || question.options.maxLabel) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.6rem', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
+                  <span>{question.options.minLabel}</span>
+                  <span>{question.options.maxLabel}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {answerError && <p style={{ color: '#ff4d4d', marginTop: '0.8rem' }}>{answerError}</p>}
         </div>
       )}
@@ -279,7 +368,7 @@ export default function Play() {
       {screen === 'answered' && (
         <div className="card" style={{ maxWidth: 420 }}>
           <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-            {selected !== null ? (
+            {hasAnswered ? (
               <>
                 <CheckCircle2 size={22} /> Risposta inviata!
               </>
@@ -293,7 +382,7 @@ export default function Play() {
         </div>
       )}
 
-      {screen === 'reveal' && myResult && (
+      {screen === 'reveal' && myResult && (reveal.type === 'multiple_choice' || (reveal.type === 'poll' && reveal.correctIndex !== -1)) && (
         <div className="card" style={{ maxWidth: 420 }}>
           <div style={{ display: 'flex', justifyContent: 'center', color: myResult.correct ? '#37ff8b' : myResult.answered ? '#ff4d6d' : 'var(--text-dim)' }}>
             {myResult.correct ? <PartyPopper size={48} /> : myResult.answered ? <XCircle size={48} /> : <Hourglass size={48} />}
@@ -303,6 +392,16 @@ export default function Play() {
             +{myResult.pointsAwarded} punti
           </p>
           <p style={{ color: 'var(--text-dim)' }}>Punteggio totale: {myResult.totalScore}</p>
+        </div>
+      )}
+
+      {screen === 'reveal' && myResult && reveal.type !== 'multiple_choice' && !(reveal.type === 'poll' && reveal.correctIndex !== -1) && (
+        <div className="card" style={{ maxWidth: 420 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--accent)' }}>
+            <CheckCircle2 size={48} />
+          </div>
+          <h2>Grazie per la tua risposta!</h2>
+          <p style={{ color: 'var(--text-dim)' }}>Guarda lo schermo per i risultati.</p>
         </div>
       )}
 

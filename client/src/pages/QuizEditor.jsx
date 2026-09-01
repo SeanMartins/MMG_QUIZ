@@ -15,6 +15,13 @@ import {
   ChevronDown,
   Check,
   ScrollText,
+  Users,
+  BarChart3,
+  Cloud,
+  MessageSquare,
+  Gauge,
+  Radio,
+  Zap,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { THEMES, FONT_OPTIONS, applyChrome } from '../themes.js';
@@ -236,6 +243,10 @@ function BrandingCard({ quiz, onChange }) {
     }
   }
 
+  async function setParticipantMode(mode) {
+    onChange(await api.updateQuiz(quiz.id, { participant_mode: mode }));
+  }
+
   const currentThemeTextColor = THEMES[quiz.theme]?.vars['--text'] || '#f4f0ff';
 
   return (
@@ -371,6 +382,31 @@ function BrandingCard({ quiz, onChange }) {
           onChange={(e) => setRulesDraft(e.target.value)}
           onBlur={saveRules}
         />
+      </div>
+
+      <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.6rem' }}>
+          <Users size={16} /> Come si iscrivono i partecipanti
+        </label>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {[
+            { value: 'team', label: 'Squadra', hint: 'Nome di squadra (oggi)' },
+            { value: 'nickname', label: 'Nickname', hint: 'Nome individuale' },
+            { value: 'anonymous', label: 'Anonimo', hint: 'Nessun nome richiesto' },
+            { value: 'named', label: 'Nome + email', hint: 'Identificazione completa' },
+          ].map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              className={quiz.participant_mode === m.value ? 'btn' : 'btn btn-outline'}
+              onClick={() => setParticipantMode(m.value)}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.15rem', padding: '0.6rem 1rem' }}
+            >
+              <span style={{ fontWeight: 700 }}>{m.label}</span>
+              <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{m.hint}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -539,6 +575,21 @@ function SessionCard({ session, index, onChange }) {
   );
 }
 
+const QUESTION_TYPE_OPTIONS = [
+  { value: 'multiple_choice', label: 'Quiz a squadre', icon: Trophy },
+  { value: 'poll', label: 'Sondaggio', icon: BarChart3 },
+  { value: 'word_cloud', label: 'Word Cloud', icon: Cloud },
+  { value: 'open_ended', label: 'Domanda aperta', icon: MessageSquare },
+  { value: 'rating_scale', label: 'Scala di valutazione', icon: Gauge },
+];
+
+const DEFAULT_CHOICES = ['Risposta A', 'Risposta B', 'Risposta C', 'Risposta D'];
+const DEFAULT_RATING = { min: 1, max: 5, minLabel: '', maxLabel: '' };
+
+function isChoiceType(type) {
+  return type === 'multiple_choice' || type === 'poll';
+}
+
 function QuestionCard({ question, index, onChange }) {
   const [local, setLocal] = useState(question);
   const localRef = useRef(question);
@@ -567,6 +618,8 @@ function QuestionCard({ question, index, onChange }) {
         correct_index: merged.correct_index,
         time_limit_seconds: merged.time_limit_seconds,
         points: merged.points,
+        type: merged.type,
+        reveal_mode: merged.reveal_mode,
       })
     );
   }
@@ -582,6 +635,28 @@ function QuestionCard({ question, index, onChange }) {
     updateLocal({ options });
   }
 
+  function changeType(newType) {
+    const patch = { type: newType };
+    if (isChoiceType(newType)) {
+      patch.options = Array.isArray(local.options) ? local.options : DEFAULT_CHOICES;
+      if (newType === 'multiple_choice' && local.correct_index === -1) patch.correct_index = 0;
+      if (newType === 'poll' && local.correct_index === undefined) patch.correct_index = -1;
+    } else if (newType === 'rating_scale') {
+      patch.options = Array.isArray(local.options) || !local.options ? DEFAULT_RATING : local.options;
+      patch.correct_index = -1;
+    } else {
+      // word_cloud / open_ended
+      patch.options = [];
+      patch.correct_index = -1;
+    }
+    save(patch);
+  }
+
+  const type = local.type || 'multiple_choice';
+  const isLiveOnly = type === 'word_cloud' || type === 'open_ended';
+  const canToggleReveal = type === 'poll' || type === 'rating_scale';
+  const ratingOptions = type === 'rating_scale' && local.options && !Array.isArray(local.options) ? local.options : DEFAULT_RATING;
+
   return (
     <div
       style={{
@@ -591,6 +666,23 @@ function QuestionCard({ question, index, onChange }) {
         background: 'var(--surface-strong)',
       }}
     >
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+        {QUESTION_TYPE_OPTIONS.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              className={type === t.value ? 'btn' : 'btn btn-outline'}
+              onClick={() => changeType(t.value)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+            >
+              <Icon size={14} /> {t.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-start', marginBottom: '0.8rem' }}>
         <span style={{ color: 'var(--text-dim)', paddingTop: '0.6rem' }}>Q{index + 1}</span>
         <textarea
@@ -606,56 +698,138 @@ function QuestionCard({ question, index, onChange }) {
         </button>
       </div>
 
-      <div
-        className="responsive-grid-2"
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.8rem' }}
-      >
-        {local.options.map((opt, i) => (
-          <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-            <input
-              type="radio"
-              checked={local.correct_index === i}
-              onChange={() => save({ correct_index: i })}
-              title="Segna come risposta corretta"
-              style={{ marginTop: '0.8rem' }}
-            />
-            <textarea
-              rows={2}
-              style={{ flex: 1, resize: 'vertical' }}
-              value={opt}
-              onChange={(e) => updateOption(i, e.target.value)}
-              onBlur={() => save({})}
-              placeholder={`Opzione ${i + 1} (testo libero, anche lungo)`}
-            />
+      {isChoiceType(type) && (
+        <>
+          <div
+            className="responsive-grid-2"
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.8rem' }}
+          >
+            {local.options.map((opt, i) => (
+              <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                <input
+                  type="radio"
+                  checked={local.correct_index === i}
+                  onChange={() => save({ correct_index: i })}
+                  title="Segna come risposta corretta"
+                  style={{ marginTop: '0.8rem' }}
+                />
+                <textarea
+                  rows={2}
+                  style={{ flex: 1, resize: 'vertical' }}
+                  value={opt}
+                  onChange={(e) => updateOption(i, e.target.value)}
+                  onBlur={() => save({})}
+                  placeholder={`Opzione ${i + 1} (testo libero, anche lungo)`}
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          {type === 'poll' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '0.8rem' }}>
+              <input
+                type="checkbox"
+                checked={local.correct_index === -1}
+                onChange={(e) => save({ correct_index: e.target.checked ? -1 : 0 })}
+              />
+              Sondaggio puro (nessuna risposta corretta, solo percentuali)
+            </label>
+          )}
+        </>
+      )}
 
-      <div style={{ display: 'flex', gap: '1.5rem' }}>
+      {type === 'rating_scale' && (
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)' }}>
+            Da
+            <input
+              type="number"
+              style={{ width: 60 }}
+              value={ratingOptions.min}
+              onChange={(e) => updateLocal({ options: { ...ratingOptions, min: Number(e.target.value) } })}
+              onBlur={() => save({})}
+            />
+          </label>
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)' }}>
+            A
+            <input
+              type="number"
+              style={{ width: 60 }}
+              value={ratingOptions.max}
+              onChange={(e) => updateLocal({ options: { ...ratingOptions, max: Number(e.target.value) } })}
+              onBlur={() => save({})}
+            />
+          </label>
+          <input
+            style={{ flex: 1, minWidth: 140 }}
+            placeholder="Etichetta minimo (es. Per niente d'accordo)"
+            value={ratingOptions.minLabel}
+            onChange={(e) => updateLocal({ options: { ...ratingOptions, minLabel: e.target.value } })}
+            onBlur={() => save({})}
+          />
+          <input
+            style={{ flex: 1, minWidth: 140 }}
+            placeholder="Etichetta massimo (es. Molto d'accordo)"
+            value={ratingOptions.maxLabel}
+            onChange={(e) => updateLocal({ options: { ...ratingOptions, maxLabel: e.target.value } })}
+            onBlur={() => save({})}
+          />
+        </div>
+      )}
+
+      {isLiveOnly && (
+        <p style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+          <Zap size={14} /> Le risposte compaiono in diretta sullo schermo host, senza bisogno di "Rivela".
+        </p>
+      )}
+
+      {canToggleReveal && (
+        <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.8rem' }}>
+          <button
+            type="button"
+            className={(local.reveal_mode || 'manual') === 'manual' ? 'btn btn-secondary' : 'btn btn-outline'}
+            onClick={() => save({ reveal_mode: 'manual' })}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
+          >
+            <Radio size={14} /> Manuale (Rivela)
+          </button>
+          <button
+            type="button"
+            className={local.reveal_mode === 'live' ? 'btn btn-secondary' : 'btn btn-outline'}
+            onClick={() => save({ reveal_mode: 'live' })}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
+          >
+            <Zap size={14} /> Live
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)' }}>
           <Timer size={16} /> Tempo (sec)
           <input
             type="number"
             min={5}
-            max={120}
+            max={300}
             style={{ width: 70 }}
             value={local.time_limit_seconds}
             onChange={(e) => updateLocal({ time_limit_seconds: Number(e.target.value) })}
             onBlur={() => save({})}
           />
         </label>
-        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)' }}>
-          <Trophy size={16} /> Punti max
-          <input
-            type="number"
-            min={100}
-            step={100}
-            style={{ width: 90 }}
-            value={local.points}
-            onChange={(e) => updateLocal({ points: Number(e.target.value) })}
-            onBlur={() => save({})}
-          />
-        </label>
+        {(type === 'multiple_choice' || (type === 'poll' && local.correct_index !== -1)) && (
+          <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)' }}>
+            <Trophy size={16} /> Punti max
+            <input
+              type="number"
+              min={100}
+              step={100}
+              style={{ width: 90 }}
+              value={local.points}
+              onChange={(e) => updateLocal({ points: Number(e.target.value) })}
+              onBlur={() => save({})}
+            />
+          </label>
+        )}
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ function brandingOf(quiz) {
     fontFamily: quiz.font_family,
     backgroundOverlay: quiz.background_overlay,
     rulesText: quiz.rules_text,
+    participantMode: quiz.participant_mode,
   };
 }
 
@@ -46,6 +47,8 @@ function sanitizeQuestion(question, session, quiz, game) {
     id: question.id,
     text: question.text,
     options: question.options,
+    type: question.type,
+    revealMode: question.reveal_mode,
     timeLimitSeconds: question.time_limit_seconds,
     points: question.points,
     index: game.current_question_index,
@@ -180,11 +183,15 @@ export function attachGameHandlers(io) {
           pointsAwarded: answer?.points_awarded ?? 0,
           timeTakenMs: answer?.time_taken_ms ?? null,
           totalScore: team.score,
+          answerIndex: answer?.answer_index ?? null,
+          answerText: answer?.answer_text ?? null,
+          answerValue: answer?.answer_value ?? null,
         };
       });
 
       io.to(`game:${code}`).emit('state:reveal', {
         questionId: question.id,
+        type: question.type,
         correctIndex: question.correct_index,
         results,
         leaderboard: buildLeaderboard(game.id),
@@ -239,21 +246,44 @@ export function attachGameHandlers(io) {
     });
 
     // ---------- PLAYERS ----------
-    socket.on('player:join', ({ code, teamName }, ack) => {
+    socket.on('player:join', ({ code, teamName, email }, ack) => {
       const game = getGameByCode(code);
       if (!game) return ack?.({ error: 'Codice partita non valido' });
       if (game.status === 'finished') return ack?.({ error: 'La partita è già terminata' });
-      const name = (teamName || '').trim().slice(0, 40);
-      if (!name) return ack?.({ error: 'Inserisci un nome squadra' });
+
+      const quiz = serializeQuiz(game.quiz_id);
+      const mode = quiz.participant_mode || 'team';
+
+      let name = (teamName || '').trim().slice(0, 60);
+      if (mode === 'anonymous') {
+        if (!name) {
+          let attempt = 0;
+          do {
+            name = `Partecipante ${Math.floor(1000 + Math.random() * 90000)}`;
+            attempt++;
+          } while (
+            attempt < 5 &&
+            db.prepare('SELECT 1 FROM teams WHERE game_id = ? AND name = ?').get(game.id, name)
+          );
+        }
+      } else if (!name) {
+        return ack?.({ error: mode === 'named' ? 'Inserisci nome e cognome' : 'Inserisci un nome' });
+      }
+
+      let emailValue = null;
+      if (mode === 'named') {
+        emailValue = (email || '').trim().slice(0, 120);
+        if (!emailValue) return ack?.({ error: 'Inserisci la tua email' });
+      }
 
       let team;
       try {
         const info = db
-          .prepare('INSERT INTO teams (game_id, name, socket_id) VALUES (?, ?, ?)')
-          .run(game.id, name, socket.id);
+          .prepare('INSERT INTO teams (game_id, name, socket_id, email) VALUES (?, ?, ?, ?)')
+          .run(game.id, name, socket.id, emailValue);
         team = { id: info.lastInsertRowid, name, score: 0 };
       } catch (err) {
-        return ack?.({ error: 'Nome squadra già in uso in questa partita' });
+        return ack?.({ error: 'Nome già in uso in questa partita, scegline un altro' });
       }
 
       socket.join(`game:${code}`);
@@ -262,7 +292,6 @@ export function attachGameHandlers(io) {
       socket.data.code = code;
       socket.data.teamId = team.id;
 
-      const quiz = serializeQuiz(game.quiz_id);
       io.to(`host:${code}`).emit('state:team-joined', team);
       ack?.({
         ok: true,
@@ -294,7 +323,7 @@ export function attachGameHandlers(io) {
       });
     });
 
-    socket.on('player:answer', ({ code, questionId, answerIndex }, ack) => {
+    socket.on('player:answer', ({ code, questionId, answerIndex, answerText, answerValue }, ack) => {
       const game = getGameByCode(code);
       if (!game) return ack?.({ error: 'Partita non trovata' });
       const teamId = socket.data.teamId;
@@ -312,19 +341,45 @@ export function attachGameHandlers(io) {
         return ack?.({ error: 'Tempo scaduto' });
       }
 
-      const correct = answerIndex === question.correct_index;
-      const pointsAwarded = computePoints({
-        correct,
-        points: question.points,
-        timeTakenMs,
-        timeLimitSeconds: question.time_limit_seconds,
-      });
+      const type = question.type;
+      let correct = false;
+      let pointsAwarded = 0;
+      let storeIndex = null;
+      let storeText = null;
+      let storeValue = null;
+
+      if (type === 'multiple_choice' || type === 'poll') {
+        storeIndex = answerIndex;
+        correct = question.correct_index !== -1 && answerIndex === question.correct_index;
+        pointsAwarded = computePoints({
+          correct,
+          points: question.points,
+          timeTakenMs,
+          timeLimitSeconds: question.time_limit_seconds,
+        });
+      } else if (type === 'rating_scale') {
+        storeValue = answerValue;
+      } else {
+        // word_cloud / open_ended
+        storeText = (answerText || '').trim().slice(0, 300);
+        if (!storeText) return ack?.({ error: 'Scrivi una risposta prima di inviare' });
+      }
 
       try {
         db.prepare(
-          `INSERT INTO answers (game_id, question_id, team_id, answer_index, time_taken_ms, correct, points_awarded)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).run(game.id, questionId, teamId, answerIndex, timeTakenMs, correct ? 1 : 0, pointsAwarded);
+          `INSERT INTO answers (game_id, question_id, team_id, answer_index, answer_text, answer_value, time_taken_ms, correct, points_awarded)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          game.id,
+          questionId,
+          teamId,
+          storeIndex,
+          storeText,
+          storeValue,
+          timeTakenMs,
+          correct ? 1 : 0,
+          pointsAwarded
+        );
       } catch (err) {
         return ack?.({ error: 'Hai già risposto a questa domanda' });
       }
@@ -334,6 +389,21 @@ export function attachGameHandlers(io) {
       }
 
       io.to(`host:${code}`).emit('state:answer-received', { teamId });
+
+      const isLive = type === 'word_cloud' || type === 'open_ended' || question.reveal_mode === 'live';
+      if (isLive) {
+        const team = db.prepare('SELECT name FROM teams WHERE id = ?').get(teamId);
+        io.to(`host:${code}`).emit('state:live-answer', {
+          questionId,
+          type,
+          teamId,
+          teamName: team?.name,
+          answerIndex: storeIndex,
+          answerText: storeText,
+          answerValue: storeValue,
+        });
+      }
+
       ack?.({ ok: true });
     });
 
